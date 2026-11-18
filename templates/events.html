@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Events Manager - Student Event Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <header class="topbar">
+        <div class="header-left">
+            <a href="{{ url_for('dashboard') }}" class="header-brand">
+                <div class="brand-icon" style="width:36px; height:36px; font-size:14px;">SA</div>
+                <div>
+                    <h1>Student Event Attendance</h1>
+                    <span>Events Management</span>
+                </div>
+            </a>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">Attendance</a>
+                <a href="{{ url_for('events_page') }}" class="nav-link active">Events</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <span>Admin: <strong style="color:#f8fafc;">{{ admin }}</strong></span>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="layout">
+            <div class="panel">
+                <h2><span class="dot-accent"></span> Add New Event</h2>
+                <form action="{{ url_for('events_page') }}" method="POST">
+                    <div class="form-group">
+                        <label>Event Name *</label>
+                        <input type="text" name="name" placeholder="e.g. Tech Seminar 2026" required>
+                    </div>
+                    <div class="row-2 form-group">
+                        <div>
+                            <label>Date *</label>
+                            <input type="date" name="date" required>
+                        </div>
+                        <div>
+                            <label>Time *</label>
+                            <input type="time" name="time" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Venue *</label>
+                        <input type="text" name="venue" placeholder="e.g. Main Campus Hall" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Organization *</label>
+                        <input type="text" name="organization" placeholder="e.g. Student Council" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" rows="3" placeholder="Optional event details"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Event</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2><span class="dot-accent" style="background:#4ade80;"></span> All Events ({{ events|length }})</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Event Name</th>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Venue</th>
+                                <th>Organization</th>
+                                <th>Attendees</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ev in events %}
+                                <tr>
+                                    <td>#{{ ev.event_id }}</td>
+                                    <td>
+                                        <strong>{{ ev.name }}</strong>
+                                        {% if ev.description %}
+                                            <div style="font-size:11px; color:#94a3b8;">{{ ev.description }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ ev.event_date }}</td>
+                                    <td>{{ ev.event_time }}</td>
+                                    <td>{{ ev.venue }}</td>
+                                    <td>{{ ev.organization }}</td>
+                                    <td><span class="badge badge-present">{{ ev.total_attendees }}</span></td>
+                                    <td>
+                                        <form action="{{ url_for('delete_event', event_id=ev.event_id) }}" method="POST" onsubmit="return confirm('Delete event #{{ ev.event_id }}?');">
+                                            <button type="submit" class="btn btn-sm btn-delete">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" style="text-align:center; color:#64748b; padding:28px;">
+                                        No events found.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

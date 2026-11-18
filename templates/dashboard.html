@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Student Event Attendance</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <header class="topbar">
+        <div class="header-left">
+            <a href="{{ url_for('dashboard') }}" class="header-brand">
+                <div class="brand-icon" style="width:36px; height:36px; font-size:14px;">SA</div>
+                <div>
+                    <h1>Student Event Attendance</h1>
+                    <span>Connected to XAMPP MySQL</span>
+                </div>
+            </a>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link active">Attendance</a>
+                <a href="{{ url_for('events_page') }}" class="nav-link">Events</a>
+            </nav>
+        </div>
+        <div class="header-right">
+            <span class="clock-pill" id="live-clock">--:--:--</span>
+            <span>Admin: <strong style="color:#f8fafc;">{{ admin }}</strong></span>
+            <a href="{{ url_for('logout') }}" class="btn-logout">Logout</a>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Attendance Logs</div>
+                <div class="stat-value text-sky">{{ total_records }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Currently In-Event (PRESENT)</div>
+                <div class="stat-value text-green">{{ active_present }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Completed (LOGGED-OUT)</div>
+                <div class="stat-value text-slate">{{ logged_out_count }}</div>
+            </div>
+        </div>
+
+        <div class="layout">
+            <div>
+                <div class="panel">
+                    <h2><span class="dot-accent"></span> Record Time-In</h2>
+                    <form action="{{ url_for('time_in') }}" method="POST">
+                        <div class="form-group">
+                            <label for="event_id">Event</label>
+                            <select name="event_id" id="event_id" onchange="toggleNewEvent()">
+                                {% for ev in events %}
+                                    <option value="{{ ev.event_id }}" {% if loop.first %}selected{% endif %}>
+                                        #{{ ev.event_id }} - {{ ev.name }} ({{ ev.event_date }})
+                                    </option>
+                                {% endfor %}
+                                <option value="">+ Create New Event</option>
+                            </select>
+                        </div>
+
+                        <div id="new-event-fields" class="new-event-box">
+                            <div class="form-group">
+                                <label>New Event Name *</label>
+                                <input type="text" id="event_name" name="event_name" placeholder="e.g. CS Week Assembly">
+                            </div>
+                            <div class="row-2 form-group">
+                                <div>
+                                    <label>Date</label>
+                                    <input type="date" name="event_date">
+                                </div>
+                                <div>
+                                    <label>Time</label>
+                                    <input type="time" name="event_time">
+                                </div>
+                            </div>
+                            <div class="row-2 form-group">
+                                <div>
+                                    <label>Venue</label>
+                                    <input type="text" name="venue" placeholder="e.g. Gym">
+                                </div>
+                                <div>
+                                    <label>Organization</label>
+                                    <input type="text" name="organization" placeholder="e.g. BSCS Org">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label>Description</label>
+                                <input type="text" name="description" placeholder="Optional">
+                            </div>
+                        </div>
+
+                        <div class="divider"></div>
+
+                        <div class="form-group">
+                            <label>Student ID *</label>
+                            <div class="input-with-btn">
+                                <input type="text" id="student_id" name="student_id" placeholder="e.g. 2025-17545" required>
+                                <button type="button" class="btn btn-lookup" onclick="lookupStudent()">Lookup</button>
+                            </div>
+                            <div class="lookup-status" id="lookup-status"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Student Name *</label>
+                            <input type="text" id="student_name" name="student_name" placeholder="Full Name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Department *</label>
+                            <input type="text" id="department" name="department" list="dept-list" placeholder="e.g. BSCS" required>
+                            <datalist id="dept-list">
+                                {% for dept in departments %}
+                                    <option value="{{ dept.department_name }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="row-2 form-group">
+                            <div>
+                                <label>Year Level *</label>
+                                <input type="number" id="year_level" name="year_level" min="1" max="5" value="1" required>
+                            </div>
+                            <div>
+                                <label>Section *</label>
+                                <input type="text" id="section" name="section" placeholder="e.g. CS 2-A" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Save Time-In Record</button>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <h2><span class="dot-accent" style="background:#f59e0b;"></span> Quick Time-Out</h2>
+                    <form action="{{ url_for('time_out') }}" method="POST">
+                        <div class="form-group">
+                            <label>Student ID</label>
+                            <input type="text" name="student_id" placeholder="Enter Student ID to Time-Out" required>
+                        </div>
+                        <button type="submit" class="btn btn-warning">Time-Out Student</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2><span class="dot-accent" style="background:#4ade80;"></span> Attendance Records</h2>
+                <form class="search-bar" action="{{ url_for('dashboard') }}" method="GET">
+                    <input type="text" name="q" value="{{ search }}" placeholder="Search student ID, name, event, department, status...">
+                    <button type="submit" class="btn">Search</button>
+                    {% if search %}
+                        <a href="{{ url_for('dashboard') }}">Reset</a>
+                    {% endif %}
+                </form>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Event</th>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Dept</th>
+                                <th>Year/Sec</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in logs %}
+                                <tr>
+                                    <td>#{{ log.attendance_id }}</td>
+                                    <td>{{ log.event_name }}</td>
+                                    <td><strong>{{ log.student_id }}</strong></td>
+                                    <td>{{ log.student_name }}</td>
+                                    <td>{{ log.department_name }}</td>
+                                    <td>{{ log.year_sec }}</td>
+                                    <td>{{ log.check_in }}</td>
+                                    <td>{{ log.check_out }}</td>
+                                    <td>
+                                        {% if log.status == 'PRESENT' %}
+                                            <span class="badge badge-present">
+                                                <span class="live-dot"></span> PRESENT
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-out">{{ log.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="white-space:nowrap;">
+                                        {% if log.status == 'PRESENT' %}
+                                            <form action="{{ url_for('time_out') }}" method="POST" style="display:inline;">
+                                                <input type="hidden" name="attendance_id" value="{{ log.attendance_id }}">
+                                                <button type="submit" class="btn btn-sm btn-timeout">Time-Out</button>
+                                            </form>
+                                        {% endif %}
+                                        <form action="{{ url_for('delete_attendance', attendance_id=log.attendance_id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Delete attendance #{{ log.attendance_id }}?');">
+                                            <button type="submit" class="btn btn-sm btn-delete">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="10" style="text-align:center; color:#64748b; padding:28px;">
+                                        No attendance records found.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            document.getElementById('live-clock').textContent = new Date().toLocaleTimeString();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function toggleNewEvent() {
+            const select = document.getElementById('event_id');
+            const box = document.getElementById('new-event-fields');
+            const eventNameInput = document.getElementById('event_name');
+            if (select.value === '') {
+                box.classList.remove('hidden');
+                eventNameInput.required = true;
+            } else {
+                box.classList.add('hidden');
+                eventNameInput.required = false;
+            }
+        }
+
+        async function lookupStudent() {
+            const sid = document.getElementById('student_id').value.trim();
+            const statusEl = document.getElementById('lookup-status');
+            if (!sid) return;
+            statusEl.textContent = 'Checking database...';
+            try {
+                const res = await fetch('/api/student/' + encodeURIComponent(sid));
+                const data = await res.json();
+                if (data.found) {
+                    document.getElementById('student_name').value = data.name || '';
+                    document.getElementById('department').value = data.department_name || '';
+                    document.getElementById('year_level').value = data.year_level || 1;
+                    document.getElementById('section').value = data.section || '';
+                    statusEl.textContent = 'Existing student loaded!';
+                } else {
+                    statusEl.textContent = 'New student ID — fill in details to auto-register.';
+                }
+            } catch (err) {
+                statusEl.textContent = 'Lookup failed.';
+            }
+        }
+
+        toggleNewEvent();
+    </script>
+</body>
+</html>
